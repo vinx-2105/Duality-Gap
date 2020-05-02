@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 Generates a dataset of 8 Gaussian distributions with their means distributed along a ring 
 """
 class Dataset_RING(Dataset):
-    def __init__(self, radius=1, num_samples=100000):
-        np.random.seed(0)
+    def __init__(self, radius=1, std_dev = 0.01, num_samples=100000, seed=0):
+        np.random.seed(seed)
         """
         Args:
             by defualt the RING is generated along the unit radius circle
@@ -35,20 +35,18 @@ class Dataset_RING(Dataset):
 
         self.dataset = []
         for center in centers:
-            points = np.random.randn(self._d_size//8, 2)*0.02
+            points = np.random.randn(self._d_size//8, 2)*std_dev
             points[:, 0] += center[0]
             points[: ,1] += center[1]
-            # print(points)
             self.dataset.append(points)
 
         self.dataset = np.asarray(self.dataset)
         _shape = self.dataset.shape
         self.dataset = np.reshape(self.dataset, (_shape[0]*_shape[1], _shape[2]))
-        print(self.dataset)
 
 
     def __len__(self):
-        return self._radius
+        return self._d_size
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
