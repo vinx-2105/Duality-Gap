@@ -27,10 +27,10 @@ def get_current_objective_value(Generator, Discriminator, curr_gen, curr_disc, d
         errD_fake = criterion(output, label)
         err = errD_real.data.item() + errD_fake.data.item()
 
-        return err
+        return -1.*err
 
 
-def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, dataloader1, dataloader2, criterion, device, lrg, lrd, writer,  num_epochs=1, d_z=100, real_label = 1, fake_label=0, beta1=0.5):
+def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, global_iter, dataloader1, dataloader2, criterion, device, lrg, lrd, writer,  num_epochs=1, d_z=100, real_label = 1, fake_label=0, beta1=0.5):
     gen = Generator()
     disc = Discriminator()
 
@@ -79,8 +79,7 @@ def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, dataloader1, 
             # Add the gradients from the all-real and all-fake batches
             errD = errD_real + errD_fake
             if iters%500==0:
-                writer.add_scalar('DG-Discriminator-Error', errD.data.item(), global_step=iters)
-                print('DG-Discriminator----Epoch-->{}; Iters-->{}; Error-->{}'.format(epoch, iters, errD.data.item()))
+                print('DG-Discriminator----Global Iter-->{}; Epoch-->{}; Iters-->{}; Error-->{}'.format(global_iter, epoch, iters, errD.item()))
             # Update D
             optimizerD.step()
             iters+=1
@@ -92,7 +91,7 @@ def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, dataloader1, 
     optimizerG = optim.Adam(g_worst.parameters(), lr=lrg, betas=(beta1, 0.999))
 
     iters=0
-    for epoch in range(10*num_epochs):
+    for epoch in range(num_epochs):
         #for each batch in the dataloader
         for i, data in enumerate(dataloader1, 0):
             label.fill_(real_label)  # fake labels are real for generator cost
@@ -107,8 +106,8 @@ def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, dataloader1, 
             # Calculate gradients for G
             errG.backward()
             if iters%500==0:
-                writer.add_scalar('DG-Generator-Error', errG.data.item(), global_step=iters)
-                print('DG-Generator----Epoch-->{}; Iters-->{}; Error-->{}'.format(epoch, iters, errG.data.item()))
+                writer.add_scalar('DG-Generator-Error', errG.item(), global_step=iters)
+                print('DG-Generator----Global Iter-->{}; Epoch-->{}; Iters-->{}; Error-->{}'.format(global_iter, epoch, iters, errG.item()))
 
             D_G_z2 = output.mean().item()
             # Update G
@@ -118,4 +117,8 @@ def get_duality_gap(Generator, Discriminator, curr_gen, curr_disc, dataloader1, 
     M_u_v_worst = get_current_objective_value(Generator, Discriminator, gen, d_worst, dataloader2, criterion, device)
     M_u_worst_v = get_current_objective_value(Generator, Discriminator, g_worst, disc, dataloader2, criterion, device)
 
-    return M_u_v_worst - M_u_worst_v
+    DG = M_u_v_worst - M_u_worst_v
+
+    writer.add_scalar("Duality Gap", DG, global_step=global_iter)
+
+    return DG
